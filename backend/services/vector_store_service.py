@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from pymilvus import connections, utility
 from pymilvus import Collection, DataType, FieldSchema, CollectionSchema
-from utils.config import VectorDBProvider, MILVUS_CONFIG  # Updated import
+from utils.config import VectorDBProvider, get_milvus_config  # Updated import
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,27 @@ class VectorDBConfig:
         """
         self.provider = provider
         self.index_mode = index_mode
-        self.milvus_uri = MILVUS_CONFIG["uri"]
+        self.milvus_config = get_milvus_config()
+        self.milvus_uri = self.milvus_config["uri"]
+
+    def _connect_to_milvus(self):
+        """
+        连接到Milvus数据库，支持本地和远程连接
+        """
+        connection_params = {
+            "alias": "default",
+            "uri": self.milvus_uri
+        }
+        
+        # 如果是远程连接，添加认证参数
+        if self.milvus_config.get("user"):
+            connection_params["user"] = self.milvus_config["user"]
+        if self.milvus_config.get("password"):
+            connection_params["password"] = self.milvus_config["password"]
+        if self.milvus_config.get("token"):
+            connection_params["token"] = self.milvus_config["token"]
+        
+        connections.connect(**connection_params)
 
     def _get_milvus_index_type(self, index_mode: str) -> str:
         """
@@ -36,7 +56,7 @@ class VectorDBConfig:
         返回:
             对应的Milvus索引类型
         """
-        return MILVUS_CONFIG["index_types"].get(index_mode, "FLAT")
+        return self.milvus_config["index_types"].get(index_mode, "FLAT")
     
     def _get_milvus_index_params(self, index_mode: str) -> Dict[str, Any]:
         """
@@ -48,7 +68,7 @@ class VectorDBConfig:
         返回:
             对应的Milvus索引参数字典
         """
-        return MILVUS_CONFIG["index_params"].get(index_mode, {})
+        return self.milvus_config["index_params"].get(index_mode, {})
 
 class VectorStoreService:
     """
@@ -171,10 +191,7 @@ class VectorStoreService:
             collection_name = f"{base_name}_{embedding_provider}_{timestamp}"
             
             # 连接到Milvus
-            connections.connect(
-                alias="default", 
-                uri=config.milvus_uri
-            )
+            config._connect_to_milvus()
             
             # 从顶层配置获取向量维度
             vector_dim = int(embeddings_data.get("vector_dimension"))
@@ -296,7 +313,7 @@ class VectorStoreService:
         """
         if provider == VectorDBProvider.MILVUS:
             try:
-                connections.connect(alias="default", uri=MILVUS_CONFIG["uri"])
+                connections.connect(alias="default", uri=get_milvus_config()["uri"])
                 collections = utility.list_collections()
                 return collections
             finally:
@@ -316,7 +333,7 @@ class VectorStoreService:
         """
         if provider == VectorDBProvider.MILVUS:
             try:
-                connections.connect(alias="default", uri=MILVUS_CONFIG["uri"])
+                connections.connect(alias="default", uri=get_milvus_config()["uri"])
                 utility.drop_collection(collection_name)
                 return True
             finally:
@@ -336,7 +353,7 @@ class VectorStoreService:
         """
         if provider == VectorDBProvider.MILVUS:
             try:
-                connections.connect(alias="default", uri=MILVUS_CONFIG["uri"])
+                connections.connect(alias="default", uri=get_milvus_config()["uri"])
                 collection = Collection(collection_name)
                 return {
                     "name": collection_name,

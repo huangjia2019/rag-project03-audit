@@ -164,9 +164,22 @@ uvicorn main:app --reload --port 8001 --host 0.0.0.0
 
 ### 技术栈
 - 后端：Python FastAPI
-- 向量数据库：Milvus
+- 向量数据库：Milvus（详细配置请参见 [milvus/README.md](milvus/README.md)）
 - 前端：React + Vite
-- 后端：Python 
+- 后端：Python
+
+### Milvus 配置说明
+
+本项目支持多种 Milvus 部署模式：
+
+- **本地模式**：使用文件数据库（仅支持 Ubuntu/MacOS）
+- **远程模式**：使用 Docker 部署的 Milvus 服务器（支持 Windows）
+
+详细的安装和配置说明请参见：
+- 📁 **[milvus/ 文件夹](milvus/)** - 包含所有 Milvus 相关配置文件
+- 📖 **[Milvus 部署指南](milvus/README.md)** - 完整的部署和使用说明
+- 🐳 **[Docker 配置](milvus/docker-compose.yml)** - 一键部署 Milvus 服务器
+- 🔧 **[连接测试](milvus/test_connection.py)** - 验证 Milvus 连接状态 
 
 ## 项目架构 
 

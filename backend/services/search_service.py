@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from pymilvus import connections, Collection, utility
 from services.embedding_service import EmbeddingService
-from utils.config import VectorDBProvider, MILVUS_CONFIG
+from utils.config import VectorDBProvider, get_milvus_config
 import os
 import json
 
@@ -17,12 +17,32 @@ class SearchService:
     def __init__(self):
         """
         初始化搜索服务
-        创建嵌入服务实例，设置Milvus连接URI，初始化搜索结果保存目录
+        创建嵌入服务实例，设置Milvus连接配置，初始化搜索结果保存目录
         """
         self.embedding_service = EmbeddingService()
-        self.milvus_uri = MILVUS_CONFIG["uri"]
+        self.milvus_config = get_milvus_config()
+        self.milvus_uri = self.milvus_config["uri"]
         self.search_results_dir = "04-search-results"
         os.makedirs(self.search_results_dir, exist_ok=True)
+
+    def _connect_to_milvus(self):
+        """
+        连接到Milvus数据库，支持本地和远程连接
+        """
+        connection_params = {
+            "alias": "default",
+            "uri": self.milvus_uri
+        }
+        
+        # 如果是远程连接，添加认证参数
+        if self.milvus_config.get("user"):
+            connection_params["user"] = self.milvus_config["user"]
+        if self.milvus_config.get("password"):
+            connection_params["password"] = self.milvus_config["password"]
+        if self.milvus_config.get("token"):
+            connection_params["token"] = self.milvus_config["token"]
+        
+        connections.connect(**connection_params)
 
     def get_providers(self) -> List[Dict[str, str]]:
         """
@@ -49,10 +69,7 @@ class SearchService:
             Exception: 连接或查询集合时发生错误
         """
         try:
-            connections.connect(
-                alias="default",
-                uri=self.milvus_uri
-            )
+            self._connect_to_milvus()
             
             collections = []
             collection_names = utility.list_collections()
@@ -155,10 +172,7 @@ class SearchService:
             
             # 连接到 Milvus
             logger.info(f"Connecting to Milvus at {self.milvus_uri}")
-            connections.connect(
-                alias="default",
-                uri=self.milvus_uri
-            )
+            self._connect_to_milvus()
             
             # 获取collection
             logger.info(f"Loading collection: {collection_id}")
